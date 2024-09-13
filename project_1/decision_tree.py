@@ -43,9 +43,10 @@ def entropy(y: np.ndarray) -> float:
     prob_sorted_by_label = count(y)
     result = 0
     for p in prob_sorted_by_label:
-        result += p * math.log2(p)
+        if p>0:
+            result += p * math.log2(p)
     
-    return abs(result)
+    return -result
 
 
 def split(x: np.ndarray, value: float) -> np.ndarray:
@@ -70,6 +71,45 @@ def most_common(y: np.ndarray) -> int:
     return unique[indx_max]
 
 
+def find_best_splits(X: np.ndarray, y: np.ndarray, criterion: str = "entropy") -> tuple:
+    """
+    Returns a tuple containing the feature with the most information gain along with the subsets of X and y
+    """
+    if criterion.lower() not in ["entropy", "gini"]:
+        raise ValueError(f"{criterion} is not a valid function")
+    
+    impurity_func = entropy if criterion == "entropy" else gini_index
+    best_feature_idx = None
+    best_IG = -math.inf
+    best_X_left, best_X_right, best_y_left, best_y_right = None, None, None, None
+
+    for feature in range(X.shape[1]):
+        feature_mean = np.mean(X[:, feature])
+        feature_boolean_mask = split(X[:, feature], feature_mean)
+        X_left, y_left = X[feature_boolean_mask], y[feature_boolean_mask] # Subset of X,y  for x <= feature_mean
+        X_right, y_right = X[~feature_boolean_mask], y[~feature_boolean_mask] # Subset of X,y for x > feature_mean
+
+        # entropy for both subset of y
+        entropy_left = impurity_func(y_left)
+        entropy_right = impurity_func(y_right)
+        
+        # weights of right and left
+        weight_left = len(y_left) / len(y)
+        weight_right = len(y_right) / len(y)
+
+        conditional_entropy = (weight_left * entropy_left) + (weight_right * entropy_right)
+        
+        IG = impurity_func(y) - conditional_entropy
+        print(f"IG = entropy(y) - conditional_entropy : {impurity_func(y)} - {conditional_entropy}")
+        print(f"IG = {IG}")
+        # Keeping tab of the values that maximizing information gain
+        if(IG > best_IG):
+            best_feature_idx = feature
+            best_IG = IG
+            best_X_left, best_y_left = X_left, y_left
+            best_X_right, best_y_right = X_right, y_right
+
+    return best_feature_idx, best_X_left, best_y_left, best_X_right, best_y_right
 
 
 class Node:
@@ -117,6 +157,21 @@ class DecisionTree:
         """
         This functions learns a decision tree given (continuous) features X and (integer) labels y.
         """
+        #Checking if datapoints have the same label
+        same_label = len(np.unique(y)) == 1
+        #Checking if identical feature values
+        #same_feature_value = all(np.all(X[i] == X[0]) for i in range(len(X)))
+        if(same_label):
+            return y[0]
+        if(all(np.all(X[i] == X[0]) for i in range(len(X)))):
+            return most_common(y)
+        
+        best_feature_idx, best_X_left, best_y_left, best_X_right, best_y_right = find_best_splits(X,y, criterion=self.criterion)
+
+
+        self.root = Node(feature=best_feature, )
+
+        #fit(subset_X, subset_y)
         raise NotImplementedError(
             "Implement this function"
         )  # Remove this line when you implement the function
@@ -154,10 +209,10 @@ if __name__ == "__main__":
         X, y, test_size=0.3, random_state=seed, shuffle=True
     )
 
-    print(f'Entropy of [1,1,1,1,1,1,1,1,1,1] = {entropy(np.array([1,1,1,1,1,1,1,1,1,1]))}')
-    print(f'split of np.array([1, 2, 3, 4, 5, 2]), 3 = {split(np.array([1, 2, 3, 4, 5, 2]), 3)}')
-    print(f"most common of [1, 2, 2, 3, 3, 3, 4, 4, 4, 4] = {most_common(np.array([1, 2, 2, 3, 3, 3, 4, 4, 4, 4]))}")
+    print(f'Entropy of [1,1,1,1,1,1,1,1,1,0,0,0,0,0] = {entropy(np.array([1,1,1,1,1,1,1,1,1,0,0,0,0,0]))}')
+    
     # Expect the training accuracy to be 1.0 when max_depth=None
+    
     rf = DecisionTree(max_depth=None, criterion="entropy")
     rf.fit(X_train, y_train)
 
