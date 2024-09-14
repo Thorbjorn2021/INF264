@@ -137,7 +137,7 @@ class Node:
     def is_leaf(self) -> bool:
         # Return True iff the node is a leaf node
         return self.value is not None
-
+    
 
 class DecisionTree:
     def __init__(
@@ -149,7 +149,13 @@ class DecisionTree:
         self.criterion = criterion
         self.max_depth = max_depth
 
-    def fit(
+    def fit(self,
+        X: np.ndarray,
+        y: np.ndarray, 
+    ):
+        self.root = self._fit(X,y)
+
+    def _fit(
         self,
         X: np.ndarray,
         y: np.ndarray,
@@ -159,38 +165,50 @@ class DecisionTree:
         """
         #Checking if datapoints have the same label
         same_label = len(np.unique(y)) == 1
-        #Checking if identical feature values
-        #same_feature_value = all(np.all(X[i] == X[0]) for i in range(len(X)))
+       
         if(same_label):
-            return y[0]
+            print(f"All labels are the same: {y[0]}. Creating leaf node.")
+            return Node(value=y[0])
+        #Checking if identical feature values
         if(all(np.all(X[i] == X[0]) for i in range(len(X)))):
-            return most_common(y)
+            print(f"All features are identical. Returning most common label: {most_common(y)}")
+            return Node(value=most_common(y))
         
+        print("Finding the best split...")
         best_feature_idx, best_X_left, best_y_left, best_X_right, best_y_right = find_best_splits(X,y, criterion=self.criterion)
 
-
-        self.root = Node(feature=best_feature, )
-
-        #fit(subset_X, subset_y)
-        raise NotImplementedError(
-            "Implement this function"
-        )  # Remove this line when you implement the function
-
+        node = Node(feature=best_feature_idx, threshold= np.mean(X[:, best_feature_idx]))
+        print("going left")
+        node.left = self._fit(best_X_left, best_y_left)
+        print("going right")
+        node.right = self._fit(best_X_right, best_y_right)
+        return node
+    
     def predict(self, X: np.ndarray) -> np.ndarray:
         """
         Given a NumPy array X of features, return a NumPy array of predicted integer labels.
         """
-        raise NotImplementedError(
-            "Implement this function"
-        )  # Remove this line when you implement the function
+        
     
     def print_tree(self):
+        if self.root is not None:
+            self._print_tree(self.root)
+        else:
+            print("The tree hasn't been trained yet.")
+
+    def _print_tree(self, node: Node, level=0):
         """
         Prints the given tree.
         """
-        raise NotImplementedError(
-            "Implement this function"
-        )  # Remove this line when you implement the function
+
+        if(node.is_leaf()):
+            print(" " * level + f"Value: {node.value}")
+        else:
+            print(" " * level + f"feature: {node.feature}, threshold: {node.threshold}")
+        
+            self._print_tree(node.left, level+1)
+
+            self._print_tree(node.right, level+1)
 
 if __name__ == "__main__":
     # Test the DecisionTree class on a synthetic dataset
@@ -209,12 +227,11 @@ if __name__ == "__main__":
         X, y, test_size=0.3, random_state=seed, shuffle=True
     )
 
-    print(f'Entropy of [1,1,1,1,1,1,1,1,1,0,0,0,0,0] = {entropy(np.array([1,1,1,1,1,1,1,1,1,0,0,0,0,0]))}')
-    
     # Expect the training accuracy to be 1.0 when max_depth=None
     
     rf = DecisionTree(max_depth=None, criterion="entropy")
     rf.fit(X_train, y_train)
+    rf.print_tree()
 
-    print(f"Training accuracy: {accuracy_score(y_train, rf.predict(X_train))}")
-    print(f"Validation accuracy: {accuracy_score(y_val, rf.predict(X_val))}")
+    #print(f"Training accuracy: {accuracy_score(y_train, rf.predict(X_train))}")
+    #print(f"Validation accuracy: {accuracy_score(y_val, rf.predict(X_val))}")
