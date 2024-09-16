@@ -188,6 +188,21 @@ class DecisionTree:
         """
         Given a NumPy array X of features, return a NumPy array of predicted integer labels.
         """
+        predictions = []
+        for i in range(len(X)):
+            predictions.append(self._predict(self.root, X[i]))
+        return np.array(predictions)
+    
+    def _predict(self, node: Node, features):
+        result = node.value
+        indx = node.feature
+        if(not node.is_leaf()):
+            if(features[indx] <= node.threshold):
+                result = self._predict(node.left, features)
+            else:
+                result = self._predict(node.right, features)
+        return result
+        
         
     
     def print_tree(self):
@@ -233,5 +248,5 @@ if __name__ == "__main__":
     rf.fit(X_train, y_train)
     rf.print_tree()
 
-    #print(f"Training accuracy: {accuracy_score(y_train, rf.predict(X_train))}")
-    #print(f"Validation accuracy: {accuracy_score(y_val, rf.predict(X_val))}")
+    print(f"Training accuracy: {accuracy_score(y_train, rf.predict(X_train))}")
+    print(f"Validation accuracy: {accuracy_score(y_val, rf.predict(X_val))}")
