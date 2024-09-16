@@ -31,9 +31,9 @@ def gini_index(y: np.ndarray) -> float:
     Example:
         gini_index(np.array([1, 1, 2, 2, 3, 3, 4, 4])) -> 0.75
     """
-    raise NotImplementedError(
-        "Implement this function"
-    )  # Remove this line when you implement the function
+    y_probs = count(y)
+    return 1 - np.sum(y_probs ** 2)
+
 
 
 def entropy(y: np.ndarray) -> float:
@@ -250,3 +250,17 @@ if __name__ == "__main__":
 
     print(f"Training accuracy: {accuracy_score(y_train, rf.predict(X_train))}")
     print(f"Validation accuracy: {accuracy_score(y_val, rf.predict(X_val))}")
+
+    T = np.array([
+    [25, 50000],
+    [30, 60000],
+    [35, 70000],
+    [40, 80000],
+    [45, 90000]
+    ])
+
+    s = np.array([0, 0, 1, 1, 1])
+
+    tree = DecisionTree(max_depth=None, criterion="gini")
+    tree.fit(T, s)
+    tree.print_tree()
