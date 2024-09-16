@@ -151,14 +151,15 @@ class DecisionTree:
 
     def fit(self,
         X: np.ndarray,
-        y: np.ndarray, 
+        y: np.ndarray,
     ):
-        self.root = self._fit(X,y)
+        self.root = self._fit(X,y, 0)
 
     def _fit(
         self,
         X: np.ndarray,
         y: np.ndarray,
+        depth: int
     ):
         """
         This functions learns a decision tree given (continuous) features X and (integer) labels y.
@@ -169,8 +170,12 @@ class DecisionTree:
         if(same_label):
             print(f"All labels are the same: {y[0]}. Creating leaf node.")
             return Node(value=y[0])
-        #Checking if identical feature values
-        if(all(np.all(X[i] == X[0]) for i in range(len(X)))):
+        #Checking if max depth is reached or if identical feature values
+        if(self.max_depth is not None):
+            if(depth >= self.max_depth):
+                print(f"Depth= {depth}, max_depth= {self.max_depth}")
+                return Node(value=most_common(y))
+        if ( all(np.all(X[i] == X[0]) for i in range(len(X)))):
             print(f"All features are identical. Returning most common label: {most_common(y)}")
             return Node(value=most_common(y))
         
@@ -179,9 +184,9 @@ class DecisionTree:
 
         node = Node(feature=best_feature_idx, threshold= np.mean(X[:, best_feature_idx]))
         print("going left")
-        node.left = self._fit(best_X_left, best_y_left)
+        node.left = self._fit(best_X_left, best_y_left, depth+1)
         print("going right")
-        node.right = self._fit(best_X_right, best_y_right)
+        node.right = self._fit(best_X_right, best_y_right, depth+1)
         return node
     
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -244,13 +249,14 @@ if __name__ == "__main__":
 
     # Expect the training accuracy to be 1.0 when max_depth=None
     
-    rf = DecisionTree(max_depth=None, criterion="entropy")
+    rf = DecisionTree(max_depth=5, criterion="entropy")
     rf.fit(X_train, y_train)
     rf.print_tree()
 
     print(f"Training accuracy: {accuracy_score(y_train, rf.predict(X_train))}")
     print(f"Validation accuracy: {accuracy_score(y_val, rf.predict(X_val))}")
 
+    """
     T = np.array([
     [25, 50000],
     [30, 60000],
@@ -261,6 +267,7 @@ if __name__ == "__main__":
 
     s = np.array([0, 0, 1, 1, 1])
 
-    tree = DecisionTree(max_depth=None, criterion="gini")
+    tree = DecisionTree(max_depth=1, criterion="gini")
     tree.fit(T, s)
     tree.print_tree()
+    """
