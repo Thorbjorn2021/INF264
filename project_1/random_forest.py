@@ -1,5 +1,5 @@
 import numpy as np
-
+from decision_tree import DecisionTree, most_common
 
 class RandomForest:
     def __init__(
@@ -13,11 +13,20 @@ class RandomForest:
         self.max_depth = max_depth
         self.criterion = criterion
         self.max_features = max_features
+        self.decision_trees = []
 
     def fit(self, X: np.ndarray, y: np.ndarray):
-        raise NotImplementedError(
-            "Implement this function"
-        )  # Remove this line when you implement the function
+        for tree in range(self.n_estimators):
+            tree = DecisionTree(max_depth=self.max_depth, criterion=self.criterion, max_features=self.max_features)
+            """
+            For each Tree: Add X and Y. Draw a random subset of the data with replacement. Split X and Y.
+            Train the tree on this data. 
+            """
+            num_rows = X.shape[0]
+            random_indices = np.random.choice(num_rows, num_rows, replace=True)
+            X_subset, y_subset = X[random_indices], y[random_indices]
+            tree.fit(X_subset, y_subset)
+            self.decision_trees.append(tree)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         raise NotImplementedError(
