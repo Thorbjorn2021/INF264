@@ -70,20 +70,42 @@ def most_common(y: np.ndarray) -> int:
     indx_max = np.argmax(counts)
     return unique[indx_max]
 
+def numb_of_features(value: str, features: int) -> int:
+    """
+    
+    """
+    value = value.lower()
+    if value not in ["sqrt", "log2"]:
+        raise ValueError("Function not recognized!")
+    elif features == 0:
+        return 0
+    else:
+        func = math.log2 if value == "log2" else math.sqrt
+        return math.floor(func(features))
+    
 
-def find_best_splits(X: np.ndarray, y: np.ndarray, criterion: str = "entropy") -> tuple:
+
+
+
+def find_best_splits(X: np.ndarray, y: np.ndarray, criterion: str = "entropy", max_features: str | None = None) -> tuple:
     """
     Returns a tuple containing the feature with the most information gain along with the subsets of X and y
     """
     if criterion.lower() not in ["entropy", "gini"]:
         raise ValueError(f"{criterion} is not a valid function")
     
+    num_features = 0
+    if max_features is not None:
+        num_features = numb_of_features(max_features, features=X.shape[1])
+
+    features_list = range(X.shape[1]) if max_features is None else np.random.choice(X.shape[1], num_features, replace=False)
+
     impurity_func = entropy if criterion == "entropy" else gini_index
     best_feature_idx = None
     best_IG = -math.inf
     best_X_left, best_X_right, best_y_left, best_y_right = None, None, None, None
 
-    for feature in range(X.shape[1]):
+    for feature in features_list:
         feature_mean = np.mean(X[:, feature])
         feature_boolean_mask = split(X[:, feature], feature_mean)
         X_left, y_left = X[feature_boolean_mask], y[feature_boolean_mask] # Subset of X,y  for x <= feature_mean
@@ -144,10 +166,12 @@ class DecisionTree:
         self,
         max_depth: int | None = None,
         criterion: str = "entropy",
+        max_features: str | None = None,
     ) -> None:
         self.root = None
         self.criterion = criterion
         self.max_depth = max_depth
+        self.max_features = max_features
 
     def fit(self,
         X: np.ndarray,
@@ -180,7 +204,7 @@ class DecisionTree:
             return Node(value=most_common(y))
         
         print("Finding the best split...")
-        best_feature_idx, best_X_left, best_y_left, best_X_right, best_y_right = find_best_splits(X,y, criterion=self.criterion)
+        best_feature_idx, best_X_left, best_y_left, best_X_right, best_y_right = find_best_splits(X,y, criterion=self.criterion, max_features=self.max_features)
 
         node = Node(feature=best_feature_idx, threshold= np.mean(X[:, best_feature_idx]))
         print("going left")
@@ -249,13 +273,13 @@ if __name__ == "__main__":
 
     # Expect the training accuracy to be 1.0 when max_depth=None
     
-    rf = DecisionTree(max_depth=5, criterion="entropy")
+    rf = DecisionTree(max_depth=None, criterion="entropy")
     rf.fit(X_train, y_train)
-    rf.print_tree()
 
     print(f"Training accuracy: {accuracy_score(y_train, rf.predict(X_train))}")
     print(f"Validation accuracy: {accuracy_score(y_val, rf.predict(X_val))}")
 
+    print(list(range(X.shape[1])))
     """
     T = np.array([
     [25, 50000],
