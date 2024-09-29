@@ -72,33 +72,30 @@ def most_common(y: np.ndarray) -> int:
 
 def numb_of_features(value: str, features: int) -> int:
     """
-    
+    Returns the number of features after passing the chosen max_feature function.
     """
     value = value.lower()
     if value not in ["sqrt", "log2"]:
-        raise ValueError("Function not recognized!")
+        raise ValueError("Function not recognized. Please use 'sqrt' or 'log2'.")
     elif features == 0:
         return 0
     else:
         func = math.log2 if value == "log2" else math.sqrt
-        return math.floor(func(features))
+        return max(1, math.floor(func(features)))
     
 
-
-
-
-def find_best_splits(X: np.ndarray, y: np.ndarray, criterion: str = "entropy", max_features: str | None = None) -> tuple:
+def find_best_splits(X: np.ndarray, y: np.ndarray, rng: np.random.Generator, criterion: str = "entropy", max_features: str | None = None) -> tuple:
     """
     Returns a tuple containing the feature with the most information gain along with the subsets of X and y
     """
     if criterion.lower() not in ["entropy", "gini"]:
-        raise ValueError(f"{criterion} is not a valid function")
+        raise ValueError(f"{criterion} is not a valid function. Please use 'entropy' or 'gini'.")
     
     num_features = 0
     if max_features is not None:
         num_features = numb_of_features(max_features, features=X.shape[1])
 
-    features_list = range(X.shape[1]) if max_features is None else np.random.choice(X.shape[1], num_features, replace=False)
+    features_list = range(X.shape[1]) if max_features is None else rng.choice(X.shape[1], num_features, replace=False)
 
     impurity_func = entropy if criterion == "entropy" else gini_index
     best_feature_idx = None
@@ -122,8 +119,6 @@ def find_best_splits(X: np.ndarray, y: np.ndarray, criterion: str = "entropy", m
         conditional_entropy = (weight_left * entropy_left) + (weight_right * entropy_right)
         
         IG = impurity_func(y) - conditional_entropy
-        print(f"IG = entropy(y) - conditional_entropy : {impurity_func(y)} - {conditional_entropy}")
-        print(f"IG = {IG}")
         # Keeping tab of the values that maximizing information gain
         if(IG > best_IG):
             best_feature_idx = feature
@@ -167,11 +162,13 @@ class DecisionTree:
         max_depth: int | None = None,
         criterion: str = "entropy",
         max_features: str | None = None,
+        random_state: int = 0
     ) -> None:
         self.root = None
         self.criterion = criterion
         self.max_depth = max_depth
         self.max_features = max_features
+        self.rng = np.random.default_rng(random_state)
 
     def fit(self,
         X: np.ndarray,
@@ -192,24 +189,25 @@ class DecisionTree:
         same_label = len(np.unique(y)) == 1
        
         if(same_label):
-            print(f"All labels are the same: {y[0]}. Creating leaf node.")
             return Node(value=y[0])
         #Checking if max depth is reached or if identical feature values
         if(self.max_depth is not None):
             if(depth >= self.max_depth):
-                print(f"Depth= {depth}, max_depth= {self.max_depth}")
                 return Node(value=most_common(y))
         if ( all(np.all(X[i] == X[0]) for i in range(len(X)))):
-            print(f"All features are identical. Returning most common label: {most_common(y)}")
             return Node(value=most_common(y))
         
-        print("Finding the best split...")
-        best_feature_idx, best_X_left, best_y_left, best_X_right, best_y_right = find_best_splits(X,y, criterion=self.criterion, max_features=self.max_features)
+        #Finding the best split
+        best_feature_idx, best_X_left, best_y_left, best_X_right, best_y_right = find_best_splits(X,y, rng=self.rng, criterion=self.criterion, max_features=self.max_features)
+
+        #No valid split is found
+        if len(best_X_left) == 0 or len(best_X_right) == 0:
+            return Node(value=most_common(y))
 
         node = Node(feature=best_feature_idx, threshold= np.mean(X[:, best_feature_idx]))
-        print("going left")
+
         node.left = self._fit(best_X_left, best_y_left, depth+1)
-        print("going right")
+
         node.right = self._fit(best_X_right, best_y_right, depth+1)
         return node
     
@@ -278,20 +276,3 @@ if __name__ == "__main__":
 
     print(f"Training accuracy: {accuracy_score(y_train, rf.predict(X_train))}")
     print(f"Validation accuracy: {accuracy_score(y_val, rf.predict(X_val))}")
-
-    print(list(range(X.shape[1])))
-    """
-    T = np.array([
-    [25, 50000],
-    [30, 60000],
-    [35, 70000],
-    [40, 80000],
-    [45, 90000]
-    ])
-
-    s = np.array([0, 0, 1, 1, 1])
-
-    tree = DecisionTree(max_depth=1, criterion="gini")
-    tree.fit(T, s)
-    tree.print_tree()
-    """

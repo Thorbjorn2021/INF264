@@ -8,12 +8,14 @@ class RandomForest:
         max_depth: int = 5,
         criterion: str = "entropy",
         max_features: None | str = "sqrt",
+        random_state: int = 0
     ) -> None:
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.criterion = criterion
         self.max_features = max_features
-        self.decision_trees = []
+        self.decision_trees: list[DecisionTree] = []
+        self.rng = np.random.default_rng(random_state)
 
     def fit(self, X: np.ndarray, y: np.ndarray):
         for tree in range(self.n_estimators):
@@ -23,15 +25,25 @@ class RandomForest:
             Train the tree on this data. 
             """
             num_rows = X.shape[0]
-            random_indices = np.random.choice(num_rows, num_rows, replace=True)
+            random_indices = self.rng.choice(num_rows, num_rows, replace=True)
             X_subset, y_subset = X[random_indices], y[random_indices]
             tree.fit(X_subset, y_subset)
             self.decision_trees.append(tree)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        raise NotImplementedError(
-            "Implement this function"
-        )  # Remove this line when you implement the function
+        #2D array of #n_estimators predictions
+        predictions = []
+        for tree in self.decision_trees:
+            prediction = tree.predict(X)
+            predictions.append(prediction)
+        predictions_arr = np.array(predictions)
+
+        #Majority voting
+        majority_voting_predictions = []
+        for i in range(predictions_arr.shape[1]):
+            majority_voting_predictions.append(most_common(predictions_arr[:, i])) 
+
+        return np.array(majority_voting_predictions)
 
 
 if __name__ == "__main__":
@@ -52,8 +64,7 @@ if __name__ == "__main__":
     )
 
     rf = RandomForest(
-        n_estimators=20, max_depth=5, criterion="entropy", max_features="sqrt"
-    )
+        n_estimators=20, max_depth=5, criterion="entropy", max_features="sqrt")
     rf.fit(X_train, y_train)
 
     print(f"Training accuracy: {accuracy_score(y_train, rf.predict(X_train))}")
